@@ -1,0 +1,22 @@
+name: Mirror main branch
+
+on:
+  push:
+    branches:
+      - main   # запускать только при пуше в main
+  workflow_dispatch: # возможность ручного запуска
+
+jobs:
+  sync-main:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # вся история
+
+      - name: Push main to target repo
+        run: |
+          git remote add mirror https://x-access-token:${{ LOVABLE.1111 }}@github.com/PargevKocharyan/live-assign-a-task.git
+          git push mirror main --force
