@@ -19,5 +19,4 @@ jobs:
       - name: Push main to target repo
         run: |
           git remote add mirror https://x-access-token:${{ secrets.TARGET_TOKEN }}@github.com/PargevKocharyan/live-assign-a-task.git
-
           git push mirror main --force
