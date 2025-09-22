@@ -3,6 +3,83 @@ name: Mirror main branch to protected repo and update Supabase
 on:
   push:
     branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  sync-main:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout the source repository
+      - name: Checkout source repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # 2. Configure Git user
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      # 3. Add remote for target repo using PAT
+      - name: Add target repository remote
+        run: |
+          git remote add target https://x-access-token:${{ secrets.TARGET_TOKEN }}@github.com/PargevKocharyan/live-assign-a-task.git
+
+      # 4. Push main branch to mirror-main in target repository
+      - name: Push main to mirror-main branch
+        run: |
+          git push target main:mirror-main --force
+
+      # 5. Create or update Pull Request
+      - name: Create Pull Request
+        id: cpr
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.TARGET_TOKEN }}
+          repository: PargevKocharyan/live-assign-a-task
+          base: main
+          head: mirror-main
+          title: "Mirror main branch"
+          body: "Automated PR: mirror main branch from source repository."
+          draft: false
+          commit-message: "Mirror main branch"
+
+      # 6. Run Supabase migrations with error check
+      - name: Run Supabase Migrations
+        run: |
+          echo "Running Supabase migrations..."
+          npx --yes supabase db push --project-ref ${{ secrets.SUPABASE_PROJECT_REF }} 2>&1 | tee supabase.log
+          MIGRATION_EXIT_CODE=${PIPESTATUS[0]}
+          if [ $MIGRATION_EXIT_CODE -ne 0 ]; then
+            echo "Supabase migrations failed! Check supabase.log for details."
+            exit 1
+          fi
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      # 7. Auto-merge the PR
+      - name: Auto-merge Pull Request
+        if: steps.cpr.outputs.pull-request-number != ''
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.TARGET_TOKEN }}
+          script: |
+            const prNumber = parseInt("${{ steps.cpr.outputs.pull-request-number }}");
+            await github.rest.pulls.merge({
+              owner: "PargevKocharyan",
+              repo: "live-assign-a-task",
+              pull_number: prNumber,
+              merge_method: "merge"
+            });
+name: Mirror main branch to protected repo and update Supabase
+
+on:
+  push:
+    branches:
       - main   # trigger on push to main
   workflow_dispatch: # allow manual run
 
