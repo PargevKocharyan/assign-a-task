@@ -1,42 +1,46 @@
-name: Mirror main branch
+name: Mirror main branch to protected repo
 
 on:
   push:
     branches:
-      - main   # run only on push to main
-  workflow_dispatch: # allow manual run
+      - main   # trigger on push to main
+  workflow_dispatch: # manual trigger
 
 jobs:
   sync-main:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout the source repository
+      # 1. Checkout source repository
       - name: Checkout source repo
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # fetch full history
+          fetch-depth: 0
 
-      # 2. Configure Git user for commits
+      # 2. Configure git user
       - name: Configure Git
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-      # 3. Verify access to target repository with git ls-remote
-      - name: Check access with git
+      # 3. Add remote for target repo
+      - name: Add target repo remote
         run: |
-          git ls-remote https://x-access-token:${{ secrets.TARGET_TOKEN }}@github.com/PargevKocharyan/live-assign-a-task.git HEAD
+          git remote add target https://x-access-token:${{ secrets.TARGET_TOKEN }}@github.com/PargevKocharyan/live-assign-a-task.git
 
-      # 4. Verify access to target repository with GitHub API
-      - name: Check access with curl
+      # 4. Push main to mirror branch
+      - name: Push to mirror-main branch
         run: |
-          curl -i \
-            -H "Authorization: token ${{ secrets.TARGET_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/PargevKocharyan/live-assign-a-task
+          git push target main:mirror-main --force
 
-      # 5. Push main branch to the target repository
-      - name: Push main to target repo
-        run: |
-          git push https://x-access-token:${{ secrets.TARGET_TOKEN }}@github.com/PargevKocharyan/live-assign-a-task.git main --force
+      # 5. Create or update Pull Request to main
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.TARGET_TOKEN }}
+          repository: PargevKocharyan/live-assign-a-task
+          base: main
+          head: mirror-main
+          title: "Mirror main branch"
+          body: "Automated PR: mirror main branch from source repository."
+          draft: false
