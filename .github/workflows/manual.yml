@@ -1,4 +1,4 @@
-name: Mirror main branch to protected repo and update Supabase
+name: Mirror main branch to protected repo and run Supabase migrations
 
 on:
   push:
@@ -48,13 +48,11 @@ jobs:
           draft: false
           commit-message: "Mirror main branch"
 
-      # 6. Run Supabase migrations with console output
+      # 6. Run Supabase migrations with console output (CLI v2)
       - name: Run Supabase Migrations
         run: |
           echo "Running Supabase migrations..."
-          # Run migration, output logs to console
           npx --yes supabase db push
-          # Check exit code to fail workflow if migration failed
           if [ $? -ne 0 ]; then
             echo "Supabase migrations failed!"
             exit 1
@@ -62,7 +60,6 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
-
 
       # 7. Auto-merge the PR
       - name: Auto-merge Pull Request
