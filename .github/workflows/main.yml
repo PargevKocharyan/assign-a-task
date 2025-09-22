@@ -1,0 +1,22 @@
+name: Check token access
+
+on:
+  workflow_dispatch: # manual run only
+
+jobs:
+  check-access:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Check access using git ls-remote
+      - name: Check repo access with git
+        run: |
+          git ls-remote https://x-access-token:${{ secrets.TARGET_TOKEN }}@github.com/PargevKocharyan/live-assign-a-task.git HEAD
+
+      # 2. Check access using GitHub API (curl)
+      - name: Check repo access with curl
+        run: |
+          curl -i \
+            -H "Authorization: token ${{ secrets.TARGET_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/PargevKocharyan/live-assign-a-task
