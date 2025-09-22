@@ -48,7 +48,7 @@ jobs:
           draft: false
           commit-message: "Mirror main branch"
 
-      # 6. Run Supabase migrations with error check
+      # 6. Run Supabase migrations with error check and log
       - name: Run Supabase Migrations
         run: |
           echo "Running Supabase migrations..."
@@ -61,7 +61,14 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
-      # 7. Auto-merge the PR
+      # 7. Upload Supabase log as artifact
+      - name: Upload Supabase log
+        uses: actions/upload-artifact@v3
+        with:
+          name: supabase-log
+          path: supabase.log
+
+      # 8. Auto-merge the PR
       - name: Auto-merge Pull Request
         if: steps.cpr.outputs.pull-request-number != ''
         uses: actions/github-script@v6
