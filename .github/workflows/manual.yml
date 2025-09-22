@@ -4,36 +4,42 @@ on:
   push:
     branches:
       - main   # trigger on push to main
-  workflow_dispatch: # manual trigger
+  workflow_dispatch: # allow manual run
 
 jobs:
   sync-main:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout source repository
+      # 1. Checkout the source repository without using default credentials
       - name: Checkout source repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false  # important to avoid using GITHUB_TOKEN
 
-      # 2. Configure git user
+      # 2. Configure Git user
       - name: Configure Git
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-      # 3. Add remote for target repo
-      - name: Add target repo remote
+      # 3. Add remote for target repo using PAT
+      - name: Add target repository remote
         run: |
           git remote add target https://x-access-token:${{ secrets.TARGET_TOKEN }}@github.com/PargevKocharyan/live-assign-a-task.git
 
-      # 4. Push main to mirror branch
-      - name: Push to mirror-main branch
+      # 4. Verify access to target repository
+      - name: Check access with git
+        run: |
+          git ls-remote target HEAD
+
+      # 5. Push main branch to mirror-main in target repository
+      - name: Push main to mirror-main branch
         run: |
           git push target main:mirror-main --force
 
-      # 5. Create or update Pull Request to main
+      # 6. Create or update Pull Request to protected main branch
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
         with:
