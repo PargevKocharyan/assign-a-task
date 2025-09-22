@@ -4,39 +4,39 @@ on:
   push:
     branches:
       - main   # run only on push to main
-  workflow_dispatch: # allow manual trigger
+  workflow_dispatch: # allow manual run
 
 jobs:
   sync-main:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Clone the source repository
+      # 1. Checkout the source repository
       - name: Checkout source repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # fetch full history
 
-      # 2. Verify access using git ls-remote
+      # 2. Configure Git user for commits
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      # 3. Verify access to target repository with git ls-remote
       - name: Check access with git
         run: |
           git ls-remote https://x-access-token:${{ secrets.TARGET_TOKEN }}@github.com/PargevKocharyan/live-assign-a-task.git HEAD
 
-      # 3. Verify access using GitHub API (curl)
+      # 4. Verify access to target repository with GitHub API
       - name: Check access with curl
         run: |
-          curl -s -o response.json -w "%{http_code}" \
+          curl -i \
             -H "Authorization: token ${{ secrets.TARGET_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/PargevKocharyan/live-assign-a-task > status.txt
-          
-          echo "Status code: $(cat status.txt)"
-          echo "Response:"
-          cat response.json
+            https://api.github.com/repos/PargevKocharyan/live-assign-a-task
 
-      # 4. If checks pass, push the main branch to the target repo
+      # 5. Push main branch to the target repository
       - name: Push main to target repo
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git push https://x-access-token:${{ secrets.TARGET_TOKEN }}@github.com/PargevKocharyan/live-assign-a-task.git main --force
