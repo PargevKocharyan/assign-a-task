@@ -3,25 +3,40 @@ name: Mirror main branch
 on:
   push:
     branches:
-      - main   # запускать при пуше в main
-  workflow_dispatch: # ручной запуск
+      - main   # run only on push to main
+  workflow_dispatch: # allow manual trigger
 
 jobs:
   sync-main:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Клонируем исходный репозиторий
+      # 1. Clone the source repository
       - name: Checkout source repo
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # полная история
+          fetch-depth: 0  # fetch full history
 
-      # 2. Синхронизируем ветку main с целевым репозиторием
+      # 2. Verify access using git ls-remote
+      - name: Check access with git
+        run: |
+          git ls-remote https://x-access-token:${{ secrets.TARGET_TOKEN }}@github.com/PargevKocharyan/live-assign-a-task.git HEAD
+
+      # 3. Verify access using GitHub API (curl)
+      - name: Check access with curl
+        run: |
+          curl -s -o response.json -w "%{http_code}" \
+            -H "Authorization: token ${{ secrets.TARGET_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/PargevKocharyan/live-assign-a-task > status.txt
+          
+          echo "Status code: $(cat status.txt)"
+          echo "Response:"
+          cat response.json
+
+      # 4. If checks pass, push the main branch to the target repo
       - name: Push main to target repo
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git push https://x-access-token:${{ secrets.TARGET_TOKEN }}@github.com/PargevKocharyan/live-assign-a-task.git main --force
-
-          
