@@ -63,7 +63,7 @@ jobs:
 
       # 7. Upload Supabase log as artifact
       - name: Upload Supabase log
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: supabase-log
           path: supabase.log
