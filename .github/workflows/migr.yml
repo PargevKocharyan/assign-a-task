@@ -1,4 +1,14 @@
-- name: Set up Node.js
+name: migration
+
+on:
+  workflow_dispatch: # manual run only
+
+jobs:
+  check-access:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Set up Node.js
     uses: actions/setup-node@v4
     with:
       node-version: '18'
