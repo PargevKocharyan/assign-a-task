@@ -1,10 +1,7 @@
 name: Mirror main branch to protected repo and run Supabase migrations
 
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
+  workflow_dispatch: # manual run only
 
 jobs:
   sync-main:
