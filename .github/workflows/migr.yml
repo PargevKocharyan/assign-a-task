@@ -13,10 +13,10 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install supabase CLI
+      - name: Install Supabase CLI
         run: |
-          curl -sL https://app.supabase.com/cli/install.sh | sh
-          export PATH="$HOME/.supabase/bin:$PATH"
+          npm install -g supabase
+          supabase --version
 
       - name: Verify supabase CLI
         run: supabase --version
