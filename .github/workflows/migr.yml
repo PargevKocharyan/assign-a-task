@@ -35,6 +35,9 @@ jobs:
           echo "Pulling remote schema to sync migrations..."
           npx supabase db pull --debug
           echo "✅ Local migrations synced with remote DB"
+          npx supabase migration repair --status reverted 20250917073355
+          npx supabase migration repair --status reverted 20250917073611
+          echo "✅ reverted"
 
       # 6. Run DB migrations
       - name: Run DB migrations
