@@ -8,18 +8,33 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Set up Node.js
-    uses: actions/setup-node@v4
-    with:
-      node-version: '18'
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
 
-  - name: Install supabase CLI
-    run: |
-      curl -sL https://app.supabase.com/cli/install.sh | sh
-      export PATH="$HOME/.supabase/bin:$PATH"
+      - name: Install supabase CLI
+        run: |
+          curl -sL https://app.supabase.com/cli/install.sh | sh
+          export PATH="$HOME/.supabase/bin:$PATH"
 
-  - name: Verify supabase CLI
-    run: supabase --version
+      - name: Verify supabase CLI
+        run: supabase --version
 
-name: Run migrations env: SUPABASE_URL: ${{ secrets.SUPABASE_URL }} SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }} run: | export PATH="$HOME/.supabase/bin:$PATH" supabase login --service-role "$SUPABASE_SERVICE_ROLE_KEY" || true supabase db push --project-ref "$SUPABASE_URL" --file ./supabase/migrations
-name: Deploy Edge Functions env: SUPABASE_URL: ${{ secrets.SUPABASE_URL }} SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }} run: | export PATH="$HOME/.supabase/bin:$PATH" supabase login --service-role "$SUPABASE_SERVICE_ROLE_KEY" || true supabase functions deploy --project-ref "$SUPABASE_URL" --all --no-verify
+      - name: Run migrations
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          export PATH="$HOME/.supabase/bin:$PATH"
+          supabase login --access-token $SUPABASE_SERVICE_ROLE_KEY
+          supabase db push --project-ref $SUPABASE_URL
+
+      - name: Deploy Edge Functions
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          export PATH="$HOME/.supabase/bin:$PATH"
+          supabase login --access-token $SUPABASE_SERVICE_ROLE_KEY
+          supabase functions deploy --project-ref $SUPABASE_URL
