@@ -24,30 +24,8 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
-          npx supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }} 
-        
-      # 5. Pull remote DB schema to sync migrations
-      - name: Sync local migrations with remote DB
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: |
-          export PATH="$HOME/.supabase/bin:$PATH"
-          echo "Pulling remote schema to sync migrations..."
-          npx supabase db pull --debug
-          echo "✅ Local migrations synced with remote DB"
-          npx supabase migration repair --status reverted 20250917073355
-          npx supabase migration repair --status reverted 20250917073611
-          echo "✅ reverted"
+          npx supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}     
 
-      # 6. Run DB migrations
-      - name: Run DB migrations
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: |
-          export PATH="$HOME/.supabase/bin:$PATH"
-          echo "Applying migrations..."
-          npx supabase db push --debug
-          echo "✅ DB migrations applied"
 
       # 7. Deploy all Edge Functions
       - name: Deploy Edge Functions
