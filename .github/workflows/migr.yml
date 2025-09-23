@@ -14,12 +14,10 @@ jobs:
           node-version: '18'
 
       - name: Install Supabase CLI
-        run: |
-          npm install -g supabase
-          supabase --version
+        run: npm install supabase --save-dev
 
       - name: Verify supabase CLI
-        run: supabase --version
+        run: npx supabase --version
 
       - name: Run migrations
         env:
