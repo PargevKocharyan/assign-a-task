@@ -25,8 +25,8 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           export PATH="$HOME/.supabase/bin:$PATH"
-          supabase login --access-token $SUPABASE_SERVICE_ROLE_KEY
-          supabase db push --project-ref $SUPABASE_URL
+          npx supabase login --access-token $SUPABASE_SERVICE_ROLE_KEY
+          npx supabase db push --project-ref $SUPABASE_URL
 
       - name: Deploy Edge Functions
         env:
