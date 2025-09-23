@@ -127,6 +127,11 @@ const Index = () => {
           <div>
             <h1 className="text-4xl font-bold text-foreground mb-2">Task Management</h1>
             <p className="text-muted-foreground">Track and manage your team's tasks</p>
+            <div className="mt-2">
+              <Button variant="outline" onClick={() => window.location.href = '/demo'} size="sm">
+                Try Function Demo →
+              </Button>
+            </div>
           </div>
           <Button onClick={() => setIsFormOpen(true)} className="flex items-center gap-2">
             <Plus className="h-4 w-4" />
