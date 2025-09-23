@@ -33,7 +33,7 @@ jobs:
         run: |
           export PATH="$HOME/.supabase/bin:$PATH"
           echo "Pulling remote schema to sync migrations..."
-          supabase db pull --debug
+          npx supabase db pull --debug
           echo "✅ Local migrations synced with remote DB"
 
       # 6. Run DB migrations
@@ -43,7 +43,7 @@ jobs:
         run: |
           export PATH="$HOME/.supabase/bin:$PATH"
           echo "Applying migrations..."
-          supabase db push --debug
+          npx supabase db push --debug
           echo "✅ DB migrations applied"
 
       # 7. Deploy all Edge Functions
@@ -53,5 +53,5 @@ jobs:
         run: |
           export PATH="$HOME/.supabase/bin:$PATH"
           echo "Deploying Edge Functions..."
-          supabase functions deploy --all --debug
+          npx supabase functions deploy --all --debug
           echo "✅ Edge Functions deployed"
