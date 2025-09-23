@@ -19,9 +19,9 @@ jobs:
       - name: Verify supabase CLI
         run: npx supabase --version
 
-      - name: Link Supabase project
+      - name: Supabase Link
         run: supabase link --project-ref $SUPABASE_URL
-        working-directory: supabase  
+        working-directory: ${{ github.workspace }}/supabase 
         
       - name: Run migrations
         env:
