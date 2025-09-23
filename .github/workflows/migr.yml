@@ -30,7 +30,8 @@ jobs:
       - name: Run migrations
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: |          
+        run: |  
+          export PATH="$HOME/.supabase/bin:$PATH"
           echo "Running DB migrations..."
           npx supabase db push --debug
           echo "✅ DB migrations completed"
