@@ -2,9 +2,6 @@ name: Supabase Migrations
 
 on:
   workflow_dispatch: # запуск вручную
-  push:
-    branches:
-      - main # запускается при пуше в main
 
 jobs:
   migrate:
