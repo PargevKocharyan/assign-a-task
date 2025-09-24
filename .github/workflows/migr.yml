@@ -34,5 +34,5 @@ jobs:
         run: |
           export PATH="$HOME/.supabase/bin:$PATH"
           echo "Deploying Edge Functions..."
-          npx supabase functions deploy generate-message --project-ref ${{ secrets.SUPABASE_PROJECT_REF }} --no-verify
+          npx supabase functions deploy generate-message --project-ref ${{ secrets.SUPABASE_PROJECT_REF }} --debug
           echo "✅ Edge Functions deployed"
