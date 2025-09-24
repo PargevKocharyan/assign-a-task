@@ -1,0 +1,50 @@
+name: Supabase Migration Repair
+
+on:
+  workflow_dispatch:
+    inputs:
+      status:
+        description: "Migration status (applied or reverted)"
+        required: true
+        default: "applied"
+      migration_id:
+        description: "Migration ID to repair (например: 20250917073355)"
+        required: true
+
+jobs:
+  repair-migration:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout repository
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      # 2. Set up Node.js (CLI requires Node)
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      # 3. Install Supabase CLI
+      - name: Install Supabase CLI
+        run: npm install supabase --save-dev
+
+      # 4. Verify CLI
+      - name: Verify Supabase CLI
+        run: npx supabase --version
+
+      # 5. Link to project
+      - name: Link Supabase project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          npx supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+
+      # 6. Run migration repair
+      - name: Repair migration
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          echo "Running migration repair for ID: ${{ github.event.inputs.migration_id }} with status: ${{ github.event.inputs.status }}"
+          npx supabase migration repair --status ${{ github.event.inputs.status }} ${{ github.event.inputs.migration_id }}
