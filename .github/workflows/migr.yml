@@ -1,52 +1,47 @@
-name: Supabase Migration & Functions Deploy
+name: Supabase Migrations
 
 on:
-  workflow_dispatch: # manual run only
+  workflow_dispatch: # запуск вручную
+  push:
+    branches:
+      - main # запускается при пуше в main
 
 jobs:
-  supabase-deploy:
+  migrate:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout repo
-      - name: Checkout source repo
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      # 2. Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
 
-      # 3. Install Supabase CLI locally
       - name: Install Supabase CLI
         run: npm install supabase --save-dev
 
-      # 4. Verify Supabase CLI
       - name: Verify Supabase CLI
         run: npx supabase --version
 
-      # 5. Link Supabase project (creates .supabase/config.json)
       - name: Link Supabase project
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: |
-          npx supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: npx supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
 
-      # 6. Run migrations
-      - name: Run Supabase migrations
+      - name: Sync migrations (db pull)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          echo "🔄 Syncing migrations from remote..."
+          npx supabase db pull
+          echo "✅ Local schema synced with remote"
+
+      - name: Apply migrations (db push)
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
           echo "🚀 Running migrations..."
           npx supabase db push --debug
-          echo "✅ Migrations complete"
-
-      # 7. Deploy Edge Functions
-      - name: Deploy Edge Functions
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: |
-          echo "🚀 Deploying Edge Functions..."
-          npx supabase functions deploy generate-message --debug
-          echo "✅ Edge Functions deployed"
+          echo "✅ Migrations applied"
