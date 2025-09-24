@@ -1,0 +1,48 @@
+name: Migrations 2
+
+on:
+  workflow_dispatch: # запуск вручную
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install Supabase CLI
+        run: npm install supabase --save-dev
+
+      - name: Verify Supabase CLI
+        run: npx supabase --version
+
+      - name: Link Supabase project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: npx supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+
+      - name: Apply migrations (db push)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          echo "🚀 Running migrations..."
+          npx supabase db push --debug
+          echo "✅ Migrations applied"
+      # 8. Deploy all Edge Functions
+      - name: Deploy Edge Functions
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          echo "🚀 Deploying Edge Functions..."
+          # Adjust folder names if needed
+          for func in $(ls supabase/functions); do
+            echo "📦 Deploying function: $func"
+            npx supabase functions deploy $func --debug
+          done
+          echo "✅ All Edge Functions deployed"
