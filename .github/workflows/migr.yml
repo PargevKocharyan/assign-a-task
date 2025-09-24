@@ -26,7 +26,7 @@ jobs:
       - name: Verify Supabase CLI
         run: npx supabase --version
 
-      # 5. Link project (optional, creates .supabase/config.json)
+      # 5. Link Supabase project (creates .supabase/config.json)
       - name: Link Supabase project
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -39,7 +39,7 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
           echo "🚀 Running migrations..."
-          npx supabase db push --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+          npx supabase db push --debug
           echo "✅ Migrations complete"
 
       # 7. Deploy Edge Functions
@@ -48,6 +48,5 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
           echo "🚀 Deploying Edge Functions..."
-          # Example: deploy "generate-message" function
-          npx supabase functions deploy generate-message --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+          npx supabase functions deploy generate-message --debug
           echo "✅ Edge Functions deployed"
