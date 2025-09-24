@@ -1,38 +1,53 @@
-name: migration
+name: Supabase Migration & Functions Deploy
 
 on:
   workflow_dispatch: # manual run only
 
 jobs:
-  check-access:
+  supabase-deploy:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. Checkout repo
+      - name: Checkout source repo
+        uses: actions/checkout@v4
+
+      # 2. Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
 
+      # 3. Install Supabase CLI locally
       - name: Install Supabase CLI
         run: npm install supabase --save-dev
 
-      - name: Verify supabase CLI
+      # 4. Verify Supabase CLI
+      - name: Verify Supabase CLI
         run: npx supabase --version
 
-      # 3. Link Supabase project
-      - name: Link Supabase Project
+      # 5. Link project (optional, creates .supabase/config.json)
+      - name: Link Supabase project
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
-          npx supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}     
+          npx supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
 
+      # 6. Run migrations
+      - name: Run Supabase migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          echo "🚀 Running migrations..."
+          npx supabase db push --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+          echo "✅ Migrations complete"
 
-      # 7. Deploy all Edge Functions
+      # 7. Deploy Edge Functions
       - name: Deploy Edge Functions
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
-          export PATH="$HOME/.supabase/bin:$PATH"
-          echo "Deploying Edge Functions..."
-          npx supabase functions deploy generate-message --project-ref ${{ secrets.SUPABASE_PROJECT_REF }} --debug
+          echo "🚀 Deploying Edge Functions..."
+          # Example: deploy "generate-message" function
+          npx supabase functions deploy generate-message --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
           echo "✅ Edge Functions deployed"
