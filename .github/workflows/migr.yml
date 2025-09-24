@@ -29,7 +29,7 @@ jobs:
 
       - name: Pull Supabase database schema
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}                 # your Supabase project URL
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }} # service role key
         run: |
           echo "🔄 Pulling latest schema from Supabase..."
