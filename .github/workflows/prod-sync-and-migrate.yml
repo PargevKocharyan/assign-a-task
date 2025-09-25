@@ -1,14 +1,12 @@
 name: Sync Prod to External Repo and Migrate
 
 on:
-  push:
-    branches: [prod]
   workflow_dispatch:
     inputs:
       target_repo:
         description: "Target repository (owner/repo-name)"
         required: true
-        default: "PargevKocharyan/live-assign-a-task"
+        default: "PargevKocharyan/live-assign-a-tas"
       target_project_ref:
         description: "Target Supabase project reference ID"
         required: true
