@@ -68,11 +68,12 @@ jobs:
           echo "🔄 Linking to new project..."
           npx supabase link --project-ref ${{ github.event.inputs.new_project_ref }}
           
-           echo "📥 Importing schema to new project..."
-          echo "ℹ️ Skipping db reset (remote target)."
+          echo "📥 Syncing migrations with remote database..."
+          # Pull any existing migrations from the new project to avoid conflicts
+          npx supabase db pull --debug || echo "No existing migrations to pull"
           
           echo "📥 Applying migrations to new project..."
-          npx supabase db push
+          npx supabase db push --debug
           
           echo "📥 Deploying Edge Functions to new project..."
           if [ -d "exported_functions" ] && [ "$(ls -A exported_functions)" ]; then
