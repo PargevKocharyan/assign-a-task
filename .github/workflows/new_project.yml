@@ -69,7 +69,7 @@ jobs:
           npx supabase link --project-ref ${{ github.event.inputs.new_project_ref }}
           
            echo "📥 Importing schema to new project..."
-          npx supabase db reset --db-url ${{ secrets.SUPABASE_DB_URL }}
+          npx supabase db reset
           
           echo "📥 Applying migrations to new project..."
           npx supabase db push
