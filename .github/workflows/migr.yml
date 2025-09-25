@@ -27,10 +27,12 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: npx supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
 
-      - name: Apply migrations (db push)
+      - name: Apply migrations
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
-          echo "🚀 Running migrations..."
-          npx supabase db push --debug
-          echo "✅ Migrations applied"
+          echo "🚀 Checking and applying migrations..."
+          npx supabase migration list --debug
+          npx supabase migration up --debug
+          echo "✅ All migrations applied successfully"
+
