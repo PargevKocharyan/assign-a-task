@@ -51,10 +51,10 @@ jobs:
           npx supabase link --project-ref hmkxgmafqjjuopckwxgf
           
           echo "📤 Exporting current database schema..."
-          npx supabase db dump --schema-only --file current_schema.sql
+          npx supabase db dump --file current_dump.sql
           
-          echo "📤 Exporting current database data..."
-          npx supabase db dump --data-only --file current_data.sql
+          echo "📤 Creating schema-only version..."
+          npx supabase db diff --file current_schema.sql
           
           echo "📤 Exporting Edge Functions..."
           mkdir -p exported_functions
@@ -68,11 +68,11 @@ jobs:
           echo "🔄 Linking to new project..."
           npx supabase link --project-ref ${{ github.event.inputs.new_project_ref }}
           
-          echo "📥 Importing schema to new project..."
-          npx supabase db push --file current_schema.sql
+           echo "📥 Importing schema to new project..."
+          npx supabase db reset --db-url ${{ secrets.SUPABASE_DB_URL }}
           
-          echo "📥 Importing data to new project..."
-          npx supabase db push --file current_data.sql
+          echo "📥 Applying migrations to new project..."
+          npx supabase db push
           
           echo "📥 Deploying Edge Functions to new project..."
           if [ -d "exported_functions" ] && [ "$(ls -A exported_functions)" ]; then
@@ -122,7 +122,7 @@ jobs:
       # 9. Cleanup temporary files
       - name: Cleanup
         run: |
-          rm -f current_schema.sql current_data.sql
+          rm -f current_dump.sql current_schema.sql
           rm -rf exported_functions
           echo "✅ Migration completed successfully!"
           echo "🎯 New project: ${{ github.event.inputs.new_project_ref }}"
