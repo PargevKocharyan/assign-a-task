@@ -69,7 +69,7 @@ jobs:
           npx supabase link --project-ref ${{ github.event.inputs.new_project_ref }}
           
            echo "📥 Importing schema to new project..."
-          npx supabase db reset
+          echo "ℹ️ Skipping db reset (remote target)."
           
           echo "📥 Applying migrations to new project..."
           npx supabase db push
