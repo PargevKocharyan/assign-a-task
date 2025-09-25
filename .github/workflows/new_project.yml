@@ -50,11 +50,11 @@ jobs:
           echo "🔄 Linking to current project..."
           npx supabase link --project-ref hmkxgmafqjjuopckwxgf
           
-          echo "📤 Exporting current database schema..."
-          npx supabase db dump --file current_dump.sql
+          echo "📤 Exporting current database schema and data..."
+          npx supabase db dump --linked --file current_dump.sql
           
-          echo "📤 Creating schema-only version..."
-          npx supabase db diff --file current_schema.sql
+          echo "📤 Creating schema diff..."
+          npx supabase db diff --linked --file current_schema.sql
           
           echo "📤 Exporting Edge Functions..."
           mkdir -p exported_functions
