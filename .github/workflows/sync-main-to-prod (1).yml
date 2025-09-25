@@ -2,11 +2,6 @@ name: Sync Main to Prod Branch
 
 on:
   workflow_dispatch: # Manual trigger
-  push:
-    branches: [main]
-    paths-ignore:
-      - '.github/**'
-      - 'README.md'
 
 jobs:
   sync-to-prod:
