@@ -48,12 +48,23 @@ jobs:
             echo "repo=${{ secrets.TARGET_REPO || 'PargevKocharyan/live-assign-a-task' }}" >> $GITHUB_OUTPUT
           fi
 
-      # 4. Add remote for target repo using PAT
+      # 4. Ensure prod branch exists
+      - name: Create prod branch if not exists
+        run: |
+          if ! git show-ref --verify --quiet refs/heads/prod; then
+            echo "🆕 Creating prod branch from current state..."
+            git checkout -b prod
+          else
+            echo "✅ Prod branch already exists"
+            git checkout prod
+          fi
+
+      # 5. Add remote for target repo using PAT
       - name: Add target repository remote
         run: |
           git remote add target https://x-access-token:${{ secrets.TARGET_TOKEN }}@github.com/${{ steps.target_repo.outputs.repo }}.git
 
-      # 5. Push prod branch to mirror-prod in target repository
+      # 6. Push prod branch to mirror-prod in target repository
       - name: Push prod to mirror-prod branch
         run: |
           echo "🚀 Pushing prod branch to ${{ steps.target_repo.outputs.repo }}"
