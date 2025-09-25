@@ -1,4 +1,4 @@
-name: Migrate to New Supabase Project
+name: Copy to New Supabase Project
 
 on:
   workflow_dispatch:
@@ -13,9 +13,9 @@ on:
         description: "New project anon key"
         required: true
       update_config_files:
-        description: "Update config files to point to new project"
+        description: "Update config files to point to new project (WARNING: This will modify your current project to use the new Supabase project)"
         type: boolean
-        default: true
+        default: false
 
 jobs:
   migrate-project:
