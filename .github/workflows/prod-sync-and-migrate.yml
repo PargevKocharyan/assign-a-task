@@ -1,0 +1,218 @@
+name: Sync Prod to External Repo and Migrate
+
+on:
+  push:
+    branches: [prod]
+  workflow_dispatch:
+    inputs:
+      target_repo:
+        description: "Target repository (owner/repo-name)"
+        required: true
+        default: "PargevKocharyan/live-assign-a-task"
+      target_project_ref:
+        description: "Target Supabase project reference ID"
+        required: true
+      target_project_url:
+        description: "Target Supabase project URL (https://xxxxx.supabase.co)"
+        required: true
+      force_migration:
+        description: "Force migration even if no changes detected"
+        type: boolean
+        default: false
+
+jobs:
+  sync-and-migrate:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. Checkout the source repository
+      - name: Checkout source repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # 2. Configure Git user
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      # 3. Set target repository from input or default
+      - name: Set target repository
+        id: target_repo
+        run: |
+          if [ "${{ github.event.inputs.target_repo }}" != "" ]; then
+            echo "repo=${{ github.event.inputs.target_repo }}" >> $GITHUB_OUTPUT
+          else
+            echo "repo=${{ secrets.TARGET_REPO || 'PargevKocharyan/live-assign-a-task' }}" >> $GITHUB_OUTPUT
+          fi
+
+      # 4. Add remote for target repo using PAT
+      - name: Add target repository remote
+        run: |
+          git remote add target https://x-access-token:${{ secrets.TARGET_TOKEN }}@github.com/${{ steps.target_repo.outputs.repo }}.git
+
+      # 5. Push prod branch to mirror-prod in target repository
+      - name: Push prod to mirror-prod branch
+        run: |
+          echo "🚀 Pushing prod branch to ${{ steps.target_repo.outputs.repo }}"
+          git push target prod:mirror-prod --force
+
+      # 6. Create or update Pull Request in target repo
+      - name: Create Pull Request in target repo
+        id: cpr
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.TARGET_TOKEN }}
+          repository: ${{ steps.target_repo.outputs.repo }}
+          base: main
+          head: mirror-prod
+          title: "Production sync from source repository"
+          body: |
+            🚀 **Production Deployment Sync**
+            
+            This PR contains the latest changes from the prod branch of the source repository.
+            
+            **Changes:**
+            - Source commit: ${{ github.sha }}
+            - Branch: prod
+            - Timestamp: ${{ github.event.head_commit.timestamp }}
+            
+            **Next Steps:**
+            After merging this PR, Supabase migrations will be automatically applied.
+          draft: false
+          commit-message: "Sync prod branch from source repository"
+
+      # 7. Auto-merge the PR in target repo
+      - name: Auto-merge Pull Request in target repo
+        if: steps.cpr.outputs.pull-request-number != ''
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.TARGET_TOKEN }}
+          script: |
+            const [owner, repo] = "${{ steps.target_repo.outputs.repo }}".split('/');
+            const prNumber = parseInt("${{ steps.cpr.outputs.pull-request-number }}");
+            
+            await github.rest.pulls.merge({
+              owner: owner,
+              repo: repo,
+              pull_number: prNumber,
+              merge_method: "merge"
+            });
+            
+            console.log(`✅ Successfully merged PR #${prNumber} in ${owner}/${repo}`);
+
+      # 8. Set up Node.js for Supabase operations
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      # 9. Install Supabase CLI
+      - name: Install Supabase CLI
+        run: npm install supabase --save-dev
+
+      # 10. Verify Supabase CLI
+      - name: Verify Supabase CLI
+        run: npx supabase --version
+
+      # 11. Export from source (current) project
+      - name: Export from source project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          echo "🔗 Linking to source project..."
+          npx supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+          
+          echo "📤 Exporting database schema..."
+          npx supabase db dump --schema-only --file source_schema.sql --debug
+          
+          echo "📤 Exporting database data..."
+          npx supabase db dump --data-only --file source_data.sql --debug
+          
+          echo "📦 Backing up Edge Functions..."
+          mkdir -p exported_functions
+          if [ -d "supabase/functions" ] && [ "$(ls -A supabase/functions)" ]; then
+            cp -r supabase/functions/* exported_functions/
+          fi
+
+      # 12. Set target project variables
+      - name: Set target project variables
+        id: target
+        run: |
+          if [ "${{ github.event.inputs.target_project_ref }}" != "" ]; then
+            echo "project_ref=${{ github.event.inputs.target_project_ref }}" >> $GITHUB_OUTPUT
+            echo "project_url=${{ github.event.inputs.target_project_url }}" >> $GITHUB_OUTPUT
+          else
+            echo "project_ref=${{ secrets.PROD_SUPABASE_PROJECT_REF }}" >> $GITHUB_OUTPUT
+            echo "project_url=${{ secrets.PROD_SUPABASE_URL }}" >> $GITHUB_OUTPUT
+          fi
+
+      # 13. Deploy to target Supabase project
+      - name: Deploy to target Supabase project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          echo "🎯 Linking to target project: ${{ steps.target.outputs.project_ref }}"
+          npx supabase link --project-ref ${{ steps.target.outputs.project_ref }}
+          
+          echo "📥 Applying schema to target project..."
+          if [ -f "source_schema.sql" ] && [ -s "source_schema.sql" ]; then
+            npx supabase db push --file source_schema.sql --debug
+          else
+            echo "⚠️  No schema changes to apply"
+          fi
+          
+          echo "📥 Applying data to target project..."
+          if [ -f "source_data.sql" ] && [ -s "source_data.sql" ]; then
+            npx supabase db push --file source_data.sql --debug
+          else
+            echo "⚠️  No data changes to apply"
+          fi
+          
+          echo "🚀 Deploying Edge Functions to target project..."
+          if [ -d "exported_functions" ] && [ "$(ls -A exported_functions)" ]; then
+            for func in exported_functions/*; do
+              if [ -d "$func" ]; then
+                func_name=$(basename "$func")
+                echo "📦 Deploying function: $func_name"
+                npx supabase functions deploy $func_name --source-dir "$func" --debug
+              fi
+            done
+          else
+            echo "⚠️  No Edge Functions to deploy"
+          fi
+
+      # 14. Verification
+      - name: Verify deployment
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          echo "🔍 Verifying deployment to target project..."
+          npx supabase migration list --debug
+          
+          echo "✅ Production sync and migration completed successfully!"
+          echo "🎯 Target repo: ${{ steps.target_repo.outputs.repo }}"
+          echo "🎯 Target project: ${{ steps.target.outputs.project_ref }}"
+          echo "🔗 URL: ${{ steps.target.outputs.project_url }}"
+
+      # 15. Cleanup
+      - name: Cleanup temporary files
+        run: |
+          rm -f source_schema.sql source_data.sql
+          rm -rf exported_functions
+          echo "🧹 Cleanup completed"
+
+      # 16. Deployment summary
+      - name: Deployment summary
+        run: |
+          echo "## 🚀 Production Sync and Migration Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Source Repo**: ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target Repo**: ${{ steps.target_repo.outputs.repo }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Source Project**: ${{ secrets.SUPABASE_PROJECT_REF }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target Project**: ${{ steps.target.outputs.project_ref }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target URL**: ${{ steps.target.outputs.project_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch**: prod" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ✅ Success" >> $GITHUB_STEP_SUMMARY
