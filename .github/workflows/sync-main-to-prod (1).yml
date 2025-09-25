@@ -1,0 +1,97 @@
+name: Sync Main to Prod Branch
+
+on:
+  workflow_dispatch: # Manual trigger
+  push:
+    branches: [main]
+    paths-ignore:
+      - '.github/**'
+      - 'README.md'
+
+jobs:
+  sync-to-prod:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Create or update prod branch with code changes only
+        run: |
+          # Check if prod branch exists remotely
+          if git ls-remote --heads origin prod | grep -q refs/heads/prod; then
+            echo "📦 Prod branch exists, checking out..."
+            git checkout prod
+            git pull origin prod
+          else
+            echo "🆕 Creating new prod branch..."
+            git checkout -b prod
+          fi
+          
+          # Get list of code-related files from main branch
+          echo "🔍 Identifying code changes to transfer..."
+          git checkout main
+          
+          # Define patterns for code files to include
+          CODE_PATTERNS=(
+            "src/"
+            "public/"
+            "supabase/"
+            "*.ts"
+            "*.tsx"
+            "*.js"
+            "*.jsx"
+            "*.json"
+            "*.css"
+            "*.html"
+            "tailwind.config.ts"
+            "vite.config.ts"
+            "tsconfig*.json"
+            "package.json"
+            "package-lock.json"
+            "bun.lockb"
+            "components.json"
+            "postcss.config.js"
+            "eslint.config.js"
+            "index.html"
+          )
+          
+          # Switch back to prod branch
+          git checkout prod
+          
+          # Copy only code-related files from main
+          echo "📋 Copying code files from main to prod..."
+          for pattern in "${CODE_PATTERNS[@]}"; do
+            if git ls-tree -r --name-only main | grep -E "^${pattern//\*/.*}"; then
+              echo "  Copying: $pattern"
+              git checkout main -- $pattern 2>/dev/null || true
+            fi
+          done
+          
+          # Check if there are any changes to commit
+          if git diff --staged --quiet && git diff --quiet; then
+            echo "ℹ️  No code changes to sync"
+          else
+            # Commit the changes
+            echo "💾 Committing code changes..."
+            git add .
+            git commit -m "Sync code changes from main branch
+
+            - Updated: $(git diff --name-only HEAD~1 2>/dev/null | wc -l) files
+            - Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+            - Source: main branch ($(git rev-parse main | cut -c1-7))"
+            
+            # Push prod branch
+            echo "📤 Pushing prod branch with code changes..."
+            git push origin prod
+            
+            echo "✅ Code changes successfully synced to prod"
+          fi
