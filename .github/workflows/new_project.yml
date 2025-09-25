@@ -1,0 +1,139 @@
+name: Migrate to New Supabase Project
+
+on:
+  workflow_dispatch:
+    inputs:
+      new_project_ref:
+        description: "New Supabase project reference ID"
+        required: true
+      new_project_url:
+        description: "New Supabase project URL (https://xxxxx.supabase.co)"
+        required: true
+      new_anon_key:
+        description: "New project anon key"
+        required: true
+      update_config_files:
+        description: "Update config files to point to new project"
+        type: boolean
+        default: true
+
+jobs:
+  migrate-project:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout repository
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # 2. Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      # 3. Install Supabase CLI
+      - name: Install Supabase CLI
+        run: npm install supabase --save-dev
+
+      # 4. Verify CLI
+      - name: Verify Supabase CLI
+        run: npx supabase --version
+
+      # 5. Export data from current project
+      - name: Export current project data
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          echo "🔄 Linking to current project..."
+          npx supabase link --project-ref phjraqkvsxdwufvcbdhi
+          
+          echo "📤 Exporting current database schema..."
+          npx supabase db dump --schema-only --file current_schema.sql
+          
+          echo "📤 Exporting current database data..."
+          npx supabase db dump --data-only --file current_data.sql
+          
+          echo "📤 Exporting Edge Functions..."
+          mkdir -p exported_functions
+          cp -r supabase/functions/* exported_functions/ || echo "No functions to export"
+
+      # 6. Setup new project
+      - name: Setup new project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          echo "🔄 Linking to new project..."
+          npx supabase link --project-ref ${{ github.event.inputs.new_project_ref }}
+          
+          echo "📥 Importing schema to new project..."
+          npx supabase db push --file current_schema.sql
+          
+          echo "📥 Importing data to new project..."
+          npx supabase db push --file current_data.sql
+          
+          echo "📥 Deploying Edge Functions to new project..."
+          if [ -d "exported_functions" ] && [ "$(ls -A exported_functions)" ]; then
+            for func in exported_functions/*; do
+              if [ -d "$func" ]; then
+                func_name=$(basename "$func")
+                echo "📦 Deploying function: $func_name"
+                npx supabase functions deploy $func_name --source-dir "$func"
+              fi
+            done
+          else
+            echo "No functions to deploy"
+          fi
+
+      # 7. Update configuration files (if requested)
+      - name: Update config files
+        if: ${{ github.event.inputs.update_config_files == 'true' }}
+        run: |
+          echo "🔧 Updating configuration files..."
+          
+          # Update supabase/config.toml
+          sed -i 's/project_id = ".*"/project_id = "${{ github.event.inputs.new_project_ref }}"/' supabase/config.toml
+          
+          # Update .env file
+          sed -i 's|VITE_SUPABASE_PROJECT_ID=".*"|VITE_SUPABASE_PROJECT_ID="${{ github.event.inputs.new_project_ref }}"|' .env
+          sed -i 's|VITE_SUPABASE_URL=".*"|VITE_SUPABASE_URL="${{ github.event.inputs.new_project_url }}"|' .env
+          sed -i 's|VITE_SUPABASE_PUBLISHABLE_KEY=".*"|VITE_SUPABASE_PUBLISHABLE_KEY="${{ github.event.inputs.new_anon_key }}"|' .env
+          
+          # Update client.ts
+          sed -i 's|const SUPABASE_URL = ".*"|const SUPABASE_URL = "${{ github.event.inputs.new_project_url }}"|' src/integrations/supabase/client.ts
+          sed -i 's|const SUPABASE_PUBLISHABLE_KEY = ".*"|const SUPABASE_PUBLISHABLE_KEY = "${{ github.event.inputs.new_anon_key }}"|' src/integrations/supabase/client.ts
+
+      # 8. Commit changes (if config files were updated)
+      - name: Commit configuration changes
+        if: ${{ github.event.inputs.update_config_files == 'true' }}
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .
+          if git diff --staged --quiet; then
+            echo "No configuration changes to commit"
+          else
+            git commit -m "🔄 Update Supabase configuration to new project ${{ github.event.inputs.new_project_ref }}"
+            git push
+          fi
+
+      # 9. Cleanup temporary files
+      - name: Cleanup
+        run: |
+          rm -f current_schema.sql current_data.sql
+          rm -rf exported_functions
+          echo "✅ Migration completed successfully!"
+          echo "🎯 New project: ${{ github.event.inputs.new_project_ref }}"
+          echo "🔗 URL: ${{ github.event.inputs.new_project_url }}"
+
+      # 10. Verification
+      - name: Verify migration
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          echo "🔍 Verifying migration..."
+          npx supabase link --project-ref ${{ github.event.inputs.new_project_ref }}
+          npx supabase migration list
+          echo "✅ Migration verification completed"
