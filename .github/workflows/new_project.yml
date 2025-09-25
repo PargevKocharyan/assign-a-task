@@ -16,6 +16,10 @@ on:
         description: "Update config files to point to new project (WARNING: This will modify your current project to use the new Supabase project)"
         type: boolean
         default: false
+      skip_database_migration:
+        description: "Skip database migration and only deploy Edge Functions"
+        type: boolean
+        default: false
 
 jobs:
   migrate-project:
@@ -42,8 +46,9 @@ jobs:
       - name: Verify Supabase CLI
         run: npx supabase --version
 
-      # 5. Export data from current project
+      # 5. Export data from current project (if not skipping database migration)
       - name: Export current project data
+        if: ${{ github.event.inputs.skip_database_migration != 'true' }}
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
@@ -60,21 +65,42 @@ jobs:
           mkdir -p exported_functions
           cp -r supabase/functions/* exported_functions/ || echo "No functions to export"
 
-      # 6. Setup new project
-      - name: Setup new project
+      # 5b. Export Edge Functions only (if skipping database migration)
+      - name: Export Edge Functions only
+        if: ${{ github.event.inputs.skip_database_migration == 'true' }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          echo "📤 Exporting Edge Functions..."
+          mkdir -p exported_functions
+          cp -r supabase/functions/* exported_functions/ || echo "No functions to export"
+
+      # 6. Link to new project
+      - name: Link to new project
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
           echo "🔄 Linking to new project..."
           npx supabase link --project-ref ${{ github.event.inputs.new_project_ref }}
-          
+
+      # 7. Setup database (if not skipping database migration)
+      - name: Setup database
+        if: ${{ github.event.inputs.skip_database_migration != 'true' }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
           echo "📥 Syncing migrations with remote database..."
           # Pull any existing migrations from the new project to avoid conflicts
           npx supabase db pull --debug || echo "No existing migrations to pull"
           
           echo "📥 Applying migrations to new project..."
           npx supabase db push --debug
-          
+
+      # 8. Deploy Edge Functions
+      - name: Deploy Edge Functions
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
           echo "📥 Deploying Edge Functions to new project..."
           if [ -d "exported_functions" ] && [ "$(ls -A exported_functions)" ]; then
             for func in exported_functions/*; do
@@ -88,7 +114,7 @@ jobs:
             echo "No functions to deploy"
           fi
 
-      # 7. Update configuration files (if requested)
+      # 9. Update configuration files (if requested)
       - name: Update config files
         if: ${{ github.event.inputs.update_config_files == 'true' }}
         run: |
@@ -106,7 +132,7 @@ jobs:
           sed -i 's|const SUPABASE_URL = ".*"|const SUPABASE_URL = "${{ github.event.inputs.new_project_url }}"|' src/integrations/supabase/client.ts
           sed -i 's|const SUPABASE_PUBLISHABLE_KEY = ".*"|const SUPABASE_PUBLISHABLE_KEY = "${{ github.event.inputs.new_anon_key }}"|' src/integrations/supabase/client.ts
 
-      # 8. Commit changes (if config files were updated)
+      # 10. Commit changes (if config files were updated)
       - name: Commit configuration changes
         if: ${{ github.event.inputs.update_config_files == 'true' }}
         run: |
@@ -120,7 +146,7 @@ jobs:
             git push
           fi
 
-      # 9. Cleanup temporary files
+      # 11. Cleanup temporary files
       - name: Cleanup
         run: |
           rm -f current_dump.sql current_schema.sql
@@ -129,7 +155,7 @@ jobs:
           echo "🎯 New project: ${{ github.event.inputs.new_project_ref }}"
           echo "🔗 URL: ${{ github.event.inputs.new_project_url }}"
 
-      # 10. Verification
+      # 12. Verification
       - name: Verify migration
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
