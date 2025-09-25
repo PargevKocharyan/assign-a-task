@@ -80,7 +80,7 @@ jobs:
               if [ -d "$func" ]; then
                 func_name=$(basename "$func")
                 echo "📦 Deploying function: $func_name"
-                npx supabase functions deploy $func_name --source-dir "$func"
+                npx supabase functions deploy $func_name
               fi
             done
           else
