@@ -1,0 +1,103 @@
+name: Sync Supabase Functions Only
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_project_ref:
+        description: "Target Supabase project reference ID"
+        required: true
+      target_project_url:
+        description: "Target Supabase project URL (https://xxxxx.supabase.co)"
+        required: true
+
+jobs:
+  sync-functions:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 2. Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      # 3. Install Supabase CLI
+      - name: Install Supabase CLI
+        run: npm install supabase --save-dev
+
+      # 4. Verify Supabase CLI
+      - name: Verify Supabase CLI
+        run: npx supabase --version
+
+      # 5. Export Edge Functions from current project
+      - name: Export Edge Functions
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          echo "🔗 Linking to source project..."
+          npx supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+          
+          echo "📦 Backing up Edge Functions..."
+          mkdir -p exported_functions
+          if [ -d "supabase/functions" ] && [ "$(ls -A supabase/functions)" ]; then
+            cp -r supabase/functions/* exported_functions/
+            echo "✅ Exported $(ls -1 exported_functions | wc -l) functions"
+            ls -la exported_functions/
+          else
+            echo "⚠️  No Edge Functions found to export"
+            exit 1
+          fi
+
+      # 6. Deploy to target Supabase project
+      - name: Deploy Functions to target project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          echo "🎯 Linking to target project: ${{ github.event.inputs.target_project_ref }}"
+          npx supabase link --project-ref ${{ github.event.inputs.target_project_ref }}
+          
+          echo "🚀 Deploying Edge Functions to target project..."
+          if [ -d "exported_functions" ] && [ "$(ls -A exported_functions)" ]; then
+            for func in exported_functions/*; do
+              if [ -d "$func" ]; then
+                func_name=$(basename "$func")
+                echo "📦 Deploying function: $func_name"
+                npx supabase functions deploy $func_name --source-dir "$func" --debug
+              fi
+            done
+            echo "✅ Successfully deployed all functions"
+          else
+            echo "⚠️  No Edge Functions to deploy"
+            exit 1
+          fi
+
+      # 7. Verification
+      - name: Verify deployment
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          echo "🔍 Verifying functions deployment..."
+          npx supabase functions list
+          echo "✅ Functions sync completed successfully!"
+
+      # 8. Cleanup
+      - name: Cleanup temporary files
+        run: |
+          rm -rf exported_functions
+          echo "🧹 Cleanup completed"
+
+      # 9. Deployment summary
+      - name: Deployment summary
+        run: |
+          echo "## 🚀 Edge Functions Sync Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Source Project**: ${{ secrets.SUPABASE_PROJECT_REF }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target Project**: ${{ github.event.inputs.target_project_ref }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target URL**: ${{ github.event.inputs.target_project_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ✅ Functions deployed successfully" >> $GITHUB_STEP_SUMMARY
