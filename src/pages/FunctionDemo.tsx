@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 const FunctionDemo = () => {
+  const navigate = useNavigate();
   const [inputText, setInputText] = useState("");
   const [result, setResult] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -94,7 +96,7 @@ const FunctionDemo = () => {
         </Card>
 
         <div className="text-center mt-8">
-          <Button variant="outline" onClick={() => window.history.back()}>
+          <Button variant="outline" onClick={() => navigate('/')}>
             ← Back to Tasks
           </Button>
         </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +26,7 @@ interface Task {
 }
 
 const Index = () => {
+  const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -128,7 +130,7 @@ const Index = () => {
             <h1 className="text-4xl font-bold text-foreground mb-2">Task Management</h1>
             <p className="text-muted-foreground">Track and manage your team's tasks</p>
             <div className="mt-2">
-              <Button variant="outline" onClick={() => window.location.href = '/demo'} size="sm">
+              <Button variant="outline" onClick={() => navigate('/demo')} size="sm">
                 Try Function Demo →
               </Button>
             </div>
