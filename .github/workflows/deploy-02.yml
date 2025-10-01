@@ -31,12 +31,12 @@ jobs:
         run: npm run build
 
       - name: List build files
-        run: ls -R ./build
+        run: ls -R ./dist
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: "./build"   # React кладет собранное сюда
+          path: "./dist"   # React кладет собранное сюда
 
   deploy:
     environment:
